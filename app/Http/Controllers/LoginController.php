@@ -73,7 +73,7 @@ class LoginController extends Controller
                 ]);
             }
 
-            return redirect()->intended(route('user.index'));
+            return redirect()->route('user.index');
         }
 
         if ($request->expectsJson() || $request->ajax()) {
