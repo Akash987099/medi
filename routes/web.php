@@ -14,6 +14,7 @@ use App\Http\Controllers\UserArticleController;
 use App\Http\Controllers\UserBlogController;
 use App\Http\Controllers\UserReviewController;
 use App\Http\Controllers\UserServiceController;
+use App\Http\Controllers\UserPackageController;
 use App\Http\Controllers\UserSliderController;
 use App\Http\Controllers\UserCmsPageController;
 use App\Http\Controllers\UserAboutUsController;
@@ -179,6 +180,14 @@ Route::prefix('user')->middleware(['auth:user'])->group(function () {
         Route::put('custom/{userService}', 'updateCustom')->whereNumber('userService')->name('custom.update');
         Route::patch('custom/{userService}/status', 'toggleCustomStatus')->whereNumber('userService')->name('custom.status');
         Route::delete('custom/{userService}', 'destroyCustom')->whereNumber('userService')->name('custom.destroy');
+    });
+
+    Route::prefix('packages')->name('user.packages.')->controller(UserPackageController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::put('{package}', 'update')->whereNumber('package')->name('update');
+        Route::patch('{package}/status', 'toggleStatus')->whereNumber('package')->name('status');
+        Route::delete('{package}', 'destroy')->whereNumber('package')->name('destroy');
     });
 
     Route::prefix('slider')->name('user.slider.')->controller(UserSliderController::class)->group(function () {

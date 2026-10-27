@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class UserService extends Model
 {
@@ -27,6 +28,12 @@ class UserService extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function packages(): BelongsToMany
+    {
+        return $this->belongsToMany(UserPackage::class, 'user_package_services')
+            ->withTimestamps();
     }
 
     public function getImageUrlAttribute(): ?string

@@ -89,6 +89,11 @@ class User extends Authenticatable
         return $this->hasMany(UserService::class);
     }
 
+    public function packages(): HasMany
+    {
+        return $this->hasMany(UserPackage::class);
+    }
+
     public function sliderItems(): HasMany
     {
         return $this->hasMany(UserSliderItem::class);

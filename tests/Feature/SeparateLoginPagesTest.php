@@ -53,12 +53,14 @@ class SeparateLoginPagesTest extends TestCase
     {
         $this->get('/admin')->assertRedirect('/admin/login');
         $this->get('/user')->assertRedirect('/login');
+        $this->get('/user/packages')->assertRedirect('/login');
     }
 
     public function test_admin_and_user_dashboard_route_names_resolve_to_their_own_paths(): void
     {
         $this->assertSame(url('/admin'), route('admin.index'));
         $this->assertSame(url('/user'), route('user.index'));
+        $this->assertSame(url('/user/packages'), route('user.packages.index'));
     }
 
     public function test_care_partner_dashboard_uses_its_own_panel_layout(): void
@@ -75,6 +77,8 @@ class SeparateLoginPagesTest extends TestCase
         $this->assertStringContainsString('Care partner navigation', $html);
         $this->assertStringContainsString('Dr. Example', $html);
         $this->assertStringContainsString('Sign out', $html);
+        $this->assertStringContainsString('Packages', $html);
+        $this->assertStringContainsString('href="'.route('user.packages.index').'"', $html);
         $this->assertStringNotContainsString('Masters', $html);
         $this->assertStringNotContainsString('>Doctors</span>', $html);
     }

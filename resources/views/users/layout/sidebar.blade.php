@@ -41,6 +41,9 @@
       <a href="{{ route('user.services.index') }}" class="sidebar-link {{ request()->routeIs('user.services.*') ? 'active' : '' }}">
         <i class="fas fa-hand-holding-medical"></i><span>Services</span>
       </a>
+      <a href="{{ route('user.packages.index') }}" class="sidebar-link {{ request()->routeIs('user.packages.*') ? 'active' : '' }}">
+        <i class="fas fa-box-open"></i><span>Packages</span>
+      </a>
       <a href="{{ route('user.slider.index') }}" class="sidebar-link {{ request()->routeIs('user.slider.*') ? 'active' : '' }}">
         <i class="far fa-images"></i><span>Slider</span>
       </a>
