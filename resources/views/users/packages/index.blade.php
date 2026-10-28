@@ -65,12 +65,13 @@
             </div>
             <fieldset class="user-package-services user-package-wide">
               <legend>Included services</legend>
+              <p class="user-package-service-hint">Select one or more active services from your Services menu.</p>
               @error('service_ids')<span class="user-package-error">{{ $message }}</span>@enderror
               <div class="user-package-service-list">
                 @foreach ($services as $service)
                   <label class="user-package-service-option">
                     <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" @checked(in_array($service->id, (array) old('service_ids', [])))>
-                    <span>{{ $service->title }}</span>
+                    <span>{{ $service->title ?: $service->service?->name }}</span>
                   </label>
                 @endforeach
               </div>
@@ -154,7 +155,7 @@
                           @foreach ($services as $service)
                             <label class="user-package-service-option">
                               <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" @checked($package->services->contains('id', $service->id))>
-                              <span>{{ $service->title }}</span>
+                              <span>{{ $service->title ?: $service->service?->name }}</span>
                             </label>
                           @endforeach
                         </div>
@@ -184,6 +185,7 @@
   .user-package-field input:focus, .user-package-field textarea:focus { border-color: #93aa93; box-shadow: 0 0 0 3px rgba(84,116,93,.1); }
   .user-package-field textarea { resize: vertical; line-height: 1.6; }
   .user-package-services { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; }
+  .user-package-service-hint { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
   .user-package-service-list { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 10px; }
   .user-package-service-option { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; color: var(--ink); background: #f7f8f4; border: 1px solid var(--line); border-radius: 7px; font-size: 12px; cursor: pointer; }
   .user-package-service-option input { accent-color: var(--green-dark); }

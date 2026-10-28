@@ -597,6 +597,121 @@
       }
     });
   })();
+
+    (() => {
+      const apiTokenModal = document.querySelector('#api-token-modal');
+      const apiTokenButtons = document.querySelectorAll('[data-api-access]');
+      const apiToken = document.querySelector('#generated-api-token');
+      const apiTokenError = document.querySelector('#api-token-error');
+      let previousApiTokenFocus;
+
+      const closeApiTokenModal = () => {
+        if (!apiTokenModal) return;
+        apiTokenModal.hidden = true;
+        if (apiToken) apiToken.textContent = '';
+        document.querySelector('#api-token-message').textContent = 'Existing API token. It will not be changed.';
+        if (apiTokenError) {
+          apiTokenError.hidden = true;
+          apiTokenError.textContent = '';
+        }
+        previousApiTokenFocus?.focus();
+      };
+
+      const showApiTokenError = (message) => {
+        if (!apiTokenError) return;
+        apiTokenError.textContent = message;
+        apiTokenError.hidden = false;
+      };
+
+      apiTokenButtons.forEach((button) => {
+        button.addEventListener('click', async () => {
+          const apiMode = button.dataset.apiMode;
+          if (
+            apiMode === 'create'
+            && button.dataset.legacyToken === 'true'
+            && !window.confirm('The old API token cannot be viewed or recovered. Creating a new token will replace it. Continue?')
+          ) {
+            return;
+          }
+
+          const csrfToken = apiMode === 'create'
+            ? document.querySelector('[data-login-csrf] input[name="_token"]')?.value
+            : null;
+          if ((apiMode === 'create' && !csrfToken) || !apiTokenModal) {
+            showApiTokenError('Unable to securely start the request. Refresh the page and try again.');
+            if (apiTokenModal) apiTokenModal.hidden = false;
+            return;
+          }
+
+          button.disabled = true;
+          button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+          try {
+            const response = await fetch(button.dataset.endpoint, {
+              method: apiMode === 'view' ? 'GET' : 'POST',
+              credentials: 'same-origin',
+              headers: apiMode === 'view'
+                ? { 'Accept': 'application/json' }
+                : { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            });
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(result.message || 'Could not create API access.');
+            }
+
+            previousApiTokenFocus = button;
+            apiToken.textContent = result.token;
+            document.querySelector('#api-token-message').textContent = result.message;
+            apiTokenError.hidden = true;
+            apiTokenError.textContent = '';
+            apiTokenModal.hidden = false;
+            apiTokenModal.querySelector('[data-close-api-token]')?.focus();
+            button.disabled = false;
+            button.dataset.apiMode = 'view';
+            button.dataset.legacyToken = 'false';
+            button.dataset.endpoint = button.dataset.viewEndpoint;
+            button.title = 'View the existing API token';
+            button.innerHTML = '<i class="fas fa-eye"></i> View API';
+          } catch (error) {
+            previousApiTokenFocus = button;
+            apiTokenModal.hidden = false;
+            showApiTokenError(error instanceof Error ? error.message : 'Could not create API access.');
+            button.disabled = false;
+            button.innerHTML = apiMode === 'view'
+              ? '<i class="fas fa-eye"></i> View API'
+              : '<i class="fas fa-code"></i> API access';
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-close-api-token]').forEach((button) => {
+        button.addEventListener('click', closeApiTokenModal);
+      });
+
+      apiTokenModal?.addEventListener('click', (event) => {
+        if (event.target === apiTokenModal) closeApiTokenModal();
+      });
+
+      document.querySelector('[data-copy-api-token]')?.addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        if (!apiToken?.textContent) return;
+
+        try {
+          await navigator.clipboard.writeText(apiToken.textContent);
+          button.title = 'Copied';
+          window.setTimeout(() => { button.title = 'Copy API token'; }, 1500);
+        } catch (error) {
+          showApiTokenError('Clipboard access failed. Select and copy the token manually.');
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && apiTokenModal && !apiTokenModal.hidden) {
+          closeApiTokenModal();
+        }
+      });
+    })();
 </script>
 </body>
 </html>

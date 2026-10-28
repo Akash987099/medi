@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Admin;
+use App\Models\UserApiDomain;
+use App\Models\CarePartnerRegistrationRequest;
 use App\Models\Doctor;
 use App\Models\Hospital;
 use App\Models\UserArticle;
@@ -23,6 +26,8 @@ use App\Models\UserWebsiteSetting;
 use App\Models\UserVideo;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -34,6 +39,46 @@ class SeparateLoginPagesTest extends TestCase
 {
     public function test_admin_and_care_partner_login_pages_are_separate(): void
     {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Care that feels')
+            ->assertSee('href="'.route('login').'"', false)
+            ->assertSee('Existing user login')
+            ->assertSee('Website only')
+            ->assertSee('Listing only')
+            ->assertSee('Website + MediCare listing')
+            ->assertSee('API & backend integration')
+            ->assertSee('Manage your digital presence from the panel.')
+            ->assertSee('Social profile links')
+            ->assertSee('YouTube videos')
+            ->assertSee('Email configuration')
+            ->assertSee('WhatsApp contact')
+            ->assertSee('Appointment management')
+            ->assertSee('Coordinate your care team')
+            ->assertSee('Track every visit')
+            ->assertSee('patients cannot book online through this panel yet')
+            ->assertSee('bulk WhatsApp broadcasts are not currently included')
+            ->assertSee('Contact for pricing')
+            ->assertSee('> Login</a>', false)
+            ->assertSee('href="'.route('care-partner-registration.create').'"', false)
+            ->assertSee('href="#directory"', false)
+            ->assertSee('href="#plans"', false)
+            ->assertSee('href="#contact"', false)
+            ->assertSee('Active doctors')
+            ->assertSee('Active hospitals')
+            ->assertSee('data-plan-card', false)
+            ->assertSee('aria-current="true"', false)
+            ->assertDontSee('Sample Family Clinic')
+            ->assertDontSee('Static demo content')
+            ->assertSee('Care partner support')
+            ->assertSee('Contact MediCare')
+            ->assertSee('Send message')
+            ->assertSee('Sample Branch One')
+            ->assertSee('Sample Branch Two')
+            ->assertSee('Demo address only')
+            ->assertSee('These are fictional sample addresses')
+            ->assertDontSee('Add official phone number');
+
         $this->get('/admin/login')
             ->assertOk()
             ->assertSee('Administrator sign in')
@@ -49,6 +94,597 @@ class SeparateLoginPagesTest extends TestCase
         $this->assertSame(url('/login'), route('user.logins'));
     }
 
+    public function test_registration_form_prefills_the_selected_plan_and_stores_a_pending_request(): void
+    {
+        $practiceName = 'Test Clinic '.Str::uuid();
+        $email = 'registration-'.Str::uuid().'@example.test';
+
+        $this->get(route('care-partner-registration.create', ['plan' => 'api_integration']))
+            ->assertOk()
+            ->assertSee('Care partner registration')
+            ->assertSee('<option value="api_integration" selected', false)
+            ->assertSee('data-step="4"', false)
+            ->assertSee('API token and domain binding setup')
+            ->assertDontSee('Website launch offer')
+            ->assertDontSee('instagram_url')
+            ->assertDontSee('youtube_url');
+
+        $this->post(route('care-partner-registration.store'), [
+            'plan' => 'api_integration',
+            'practice_type' => 'clinic',
+            'practice_name' => $practiceName,
+            'specialty' => 'Family medicine',
+            'website_url' => 'https://clinic.example.test',
+            'address' => '12 Test Road',
+            'city' => 'Test City',
+            'state' => 'Test State',
+            'postal_code' => '123456',
+            'contact_name' => 'Test Contact',
+            'email' => $email,
+            'phone' => '+911234567890',
+            'message' => 'Need API integration support',
+            'consent' => '1',
+        ])->assertRedirect(route('care-partner-registration.create'))
+            ->assertSessionHas('registration_submitted', true);
+
+        $registration = CarePartnerRegistrationRequest::where('email', $email)->firstOrFail();
+        try {
+            $this->assertDatabaseHas('care_partner_registration_requests', [
+                'id' => $registration->id,
+                'plan' => 'api_integration',
+                'practice_type' => 'clinic',
+                'practice_name' => $practiceName,
+                'contact_name' => 'Test Contact',
+                'status' => 'pending',
+            ]);
+            $this->assertNotNull($registration->consented_at);
+        } finally {
+            $registration->delete();
+        }
+    }
+
+    public function test_registration_rejects_invalid_plan_and_missing_required_details(): void
+    {
+        $this->from(route('care-partner-registration.create'))
+            ->post(route('care-partner-registration.store'), [
+                'plan' => 'made_up_plan',
+            ])
+            ->assertRedirect(route('care-partner-registration.create'))
+            ->assertSessionHasErrors(['plan', 'practice_type', 'practice_name', 'contact_name', 'email', 'consent']);
+    }
+
+    public function test_contact_form_saves_enquiry_for_admin_inbox_and_admin_can_update_status(): void
+    {
+        $email = 'contact-'.Str::uuid().'@example.test';
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('action="'.route('contact.store').'"', false)
+            ->assertSee('name="subject"', false)
+            ->assertSee('name="message"', false);
+
+        $this->from(route('home').'#contact')
+            ->post(route('contact.store'), [
+                'name' => 'Website Enquiry',
+                'email' => $email,
+                'phone' => '+911234567890',
+                'subject' => 'Website information',
+                'message' => 'Please share website plan details.',
+            ])
+            ->assertRedirect(route('home'))
+            ->assertSessionHas('contact_submitted', true);
+
+        $contactMessage = \App\Models\ContactMessage::where('email', $email)->firstOrFail();
+        try {
+            $this->assertDatabaseHas('contact_messages', [
+                'id' => $contactMessage->id,
+                'name' => 'Website Enquiry',
+                'subject' => 'Website information',
+                'status' => 'new',
+            ]);
+
+            $this->get(route('admin.contact-messages.index'))
+                ->assertRedirect(route('admin.login'));
+
+            $admin = new Admin([
+                'name' => 'Contact Inbox Test Admin',
+                'email' => 'contact-inbox-admin@example.test',
+                'password' => 'unused',
+            ]);
+            $admin->id = 1;
+
+            $this->actingAs($admin, 'admin')
+                ->get(route('admin.contact-messages.index', ['q' => 'Website Enquiry']))
+                ->assertOk()
+                ->assertSee('Website Enquiry')
+                ->assertSee($email)
+                ->assertSee('Please share website plan details.')
+                ->assertSee('mailto:'.$email, false)
+                ->assertSee('New');
+
+            $this->actingAs($admin, 'admin')
+                ->patch(route('admin.contact-messages.status', $contactMessage), [
+                    'status' => 'contacted',
+                ])
+                ->assertRedirect(route('admin.contact-messages.index'))
+                ->assertSessionHas('status', 'Contact message status updated.');
+
+            $this->assertDatabaseHas('contact_messages', [
+                'id' => $contactMessage->id,
+                'status' => 'contacted',
+            ]);
+        } finally {
+            $contactMessage->delete();
+        }
+    }
+
+    public function test_admin_can_review_contact_and_update_registration_request_status(): void
+    {
+        $email = 'admin-request-'.Str::uuid().'@example.test';
+        $registrationRequest = CarePartnerRegistrationRequest::create([
+            'plan' => 'website_listing',
+            'practice_type' => 'clinic',
+            'practice_name' => 'Admin Review Clinic',
+            'specialty' => 'Primary care',
+            'website_url' => 'https://clinic.example.test',
+            'address' => '20 Clinic Road',
+            'city' => 'Example City',
+            'state' => 'Example State',
+            'postal_code' => '123456',
+            'contact_name' => 'Clinic Contact',
+            'email' => $email,
+            'phone' => '+911234567890',
+            'message' => 'Please call after 10 AM.',
+            'consented_at' => now(),
+            'status' => 'pending',
+        ]);
+
+        try {
+            $this->get(route('admin.registration-requests.index'))
+                ->assertRedirect(route('admin.login'));
+
+            $admin = new Admin([
+                'name' => 'Registration Test Admin',
+                'email' => 'registration-admin@example.test',
+                'password' => 'unused',
+            ]);
+            $admin->id = 1;
+
+            $this->actingAs($admin, 'admin')
+                ->get(route('admin.registration-requests.index'))
+                ->assertOk()
+                ->assertSee('Registration requests')
+                ->assertSee('Admin Review Clinic')
+                ->assertSee($email)
+                ->assertSee('Website + MediCare listing');
+
+            $this->actingAs($admin, 'admin')
+                ->get(route('admin.registration-requests.show', $registrationRequest))
+                ->assertOk()
+                ->assertSee('Clinic Contact')
+                ->assertSee('Please call after 10 AM.')
+                ->assertSee('mailto:'.$email, false)
+                ->assertSee('tel:+911234567890', false)
+                ->assertSee('https://wa.me/911234567890', false);
+
+            $this->actingAs($admin, 'admin')
+                ->patch(route('admin.registration-requests.status', $registrationRequest), [
+                    'status' => 'contacted',
+                ])
+                ->assertRedirect(route('admin.registration-requests.show', $registrationRequest))
+                ->assertSessionHas('status', 'Registration request status updated.');
+
+            $this->assertDatabaseHas('care_partner_registration_requests', [
+                'id' => $registrationRequest->id,
+                'status' => 'contacted',
+            ]);
+        } finally {
+            $registrationRequest->delete();
+        }
+    }
+
+    public function test_care_partner_can_schedule_search_update_and_track_appointments(): void
+    {
+        $user = User::create([
+            'name' => 'Appointment Doctor',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 2,
+            'email' => 'appointment-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $appointmentAt = now()->addDays(3)->startOfHour();
+
+        try {
+            $this->actingAs($user, 'user')
+                ->get(route('user.appointments.index'))
+                ->assertOk()
+                ->assertSee('Appointments')
+                ->assertSee('Schedule an appointment')
+                    ->assertSee('Appointment register')
+                    ->assertSee('name="appointment_at"', false)
+                    ->assertSee('min="'.now()->addMinute()->startOfMinute()->format('Y-m-d\TH:i').'"', false);
+
+                $this->from(route('user.appointments.index'))
+                    ->actingAs($user, 'user')
+                    ->post(route('user.appointments.store'), [
+                        'patient_name' => 'Past Patient',
+                        'phone' => '+911234567899',
+                        'appointment_at' => now()->subMinutes(5)->format('Y-m-d\TH:i'),
+                        'duration_minutes' => 30,
+                        'reason' => 'Past appointment attempt',
+                    ])
+                    ->assertRedirect(route('user.appointments.index'))
+                    ->assertSessionHasErrors('appointment_at');
+
+            $this->actingAs($user, 'user')
+                ->post(route('user.appointments.store'), [
+                    'patient_name' => 'Sam Patient',
+                    'phone' => '+911234567890',
+                    'email' => 'sam.patient@example.test',
+                    'appointment_at' => $appointmentAt->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Follow-up consultation',
+                    'notes' => 'Bring previous reports.',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHas('status', 'Appointment scheduled successfully.');
+
+            $appointment = $user->appointments()->firstOrFail();
+            $this->assertSame('scheduled', $appointment->status);
+
+            $this->from(route('user.appointments.index'))
+                ->actingAs($user, 'user')
+                ->put(route('user.appointments.update', $appointment), [
+                    'patient_name' => 'Sam Patient',
+                    'phone' => '+911234567890',
+                    'email' => 'sam.patient@example.test',
+                    'appointment_at' => $appointmentAt->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Follow-up consultation',
+                    'notes' => 'Bring previous reports.',
+                    'status' => 'confirmed',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHas('status', 'Appointment updated successfully.');
+
+            $this->from(route('user.appointments.index'))
+                ->actingAs($user, 'user')
+                ->post(route('user.appointments.store'), [
+                    'patient_name' => 'Overlap Patient',
+                    'phone' => '+911234567891',
+                    'appointment_at' => $appointmentAt->copy()->addMinutes(15)->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Overlapping visit',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHasErrors('appointment_at');
+
+            $this->actingAs($user, 'user')
+                ->get(route('user.appointments.index', ['q' => 'Sam', 'status' => 'confirmed']))
+                ->assertOk()
+                ->assertSee('Sam Patient')
+                ->assertSee('Confirmed')
+                ->assertSee('Bring previous reports.');
+
+            $this->actingAs($user, 'user')
+                ->delete(route('user.appointments.destroy', $appointment))
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHas('status', 'Appointment deleted successfully.');
+
+            $this->assertDatabaseMissing('user_appointments', ['id' => $appointment->id]);
+        } finally {
+            $user->delete();
+        }
+    }
+
+    public function test_care_partners_cannot_view_or_modify_another_users_appointments(): void
+    {
+        $owner = User::create([
+            'name' => 'Appointment Owner',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 2,
+            'email' => 'appointment-owner-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $otherUser = User::create([
+            'name' => 'Other Doctor',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 2,
+            'email' => 'appointment-other-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $appointment = $owner->appointments()->create([
+            'patient_name' => 'Private Patient',
+            'phone' => '+911234567890',
+            'appointment_at' => now()->addDays(2),
+            'duration_minutes' => 30,
+            'reason' => 'Private appointment',
+            'status' => 'scheduled',
+        ]);
+
+        try {
+            $this->actingAs($otherUser, 'user')
+                ->get(route('user.appointments.index'))
+                ->assertOk()
+                ->assertDontSee('Private Patient');
+
+            $this->actingAs($otherUser, 'user')
+                ->put(route('user.appointments.update', $appointment), [
+                    'patient_name' => 'Changed Patient',
+                    'phone' => '+911234567890',
+                    'appointment_at' => now()->addDays(2)->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Changed reason',
+                    'status' => 'confirmed',
+                ])
+                ->assertNotFound();
+
+            $this->actingAs($otherUser, 'user')
+                ->delete(route('user.appointments.destroy', $appointment))
+                ->assertNotFound();
+
+            $this->assertSame('Private Patient', $appointment->fresh()->patient_name);
+            $this->assertDatabaseHas('user_appointments', [
+                'id' => $appointment->id,
+                'user_id' => $owner->id,
+            ]);
+        } finally {
+            $owner->delete();
+            $otherUser->delete();
+        }
+    }
+
+    public function test_past_appointment_time_cannot_be_changed_but_status_can_be_managed(): void
+    {
+        $user = User::create([
+            'name' => 'Past Appointment Doctor',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 2,
+            'email' => 'past-appointment-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $pastDateTime = now()->subDays(2);
+        $appointment = $user->appointments()->create([
+            'patient_name' => 'Past Visit Patient',
+            'phone' => '+911234567890',
+            'appointment_at' => $pastDateTime,
+            'duration_minutes' => 30,
+            'reason' => 'Completed visit',
+            'status' => 'scheduled',
+        ]);
+
+        try {
+            $this->actingAs($user, 'user')
+                ->get(route('user.appointments.index'))
+                ->assertOk()
+                ->assertSee('Past appointment times cannot be changed.')
+                ->assertSee('type="hidden" name="appointment_at" value="'.$pastDateTime->format('Y-m-d\TH:i').'"', false);
+
+            $this->from(route('user.appointments.index'))
+                ->actingAs($user, 'user')
+                ->put(route('user.appointments.update', $appointment), [
+                    'patient_name' => 'Past Visit Patient',
+                    'phone' => '+911234567890',
+                    'appointment_at' => $pastDateTime->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Completed visit',
+                    'status' => 'completed',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHas('status', 'Appointment updated successfully.');
+
+            $this->assertSame('completed', $appointment->fresh()->status);
+        } finally {
+            $user->delete();
+        }
+    }
+
+    public function test_hospital_appointments_are_assigned_only_to_its_own_active_doctors(): void
+    {
+        $hospitalUser = User::create([
+            'name' => 'Appointment Hospital',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 1,
+            'email' => 'appointment-hospital-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $otherHospitalUser = User::create([
+            'name' => 'Other Appointment Hospital',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 1,
+            'email' => 'appointment-other-hospital-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+        $category = Category::create([
+            'name' => 'Appointment specialty '.Str::uuid(),
+            'visual_type' => 'icon',
+            'visual_value' => 'fas fa-heart',
+            'is_active' => true,
+        ]);
+        $hospital = Hospital::create([
+            'user_id' => $hospitalUser->id,
+            'name' => 'Appointment Hospital',
+            'email' => 'appointment-clinic-'.Str::uuid().'@example.test',
+            'phone' => '+911234567890',
+        ]);
+        $otherHospital = Hospital::create([
+            'user_id' => $otherHospitalUser->id,
+            'name' => 'Other Appointment Hospital',
+            'email' => 'appointment-other-clinic-'.Str::uuid().'@example.test',
+            'phone' => '+911234567891',
+        ]);
+        $doctor = Doctor::create([
+            'category_id' => $category->id,
+            'hospital_id' => $hospital->id,
+            'name' => 'Assigned Doctor',
+            'email' => 'assigned-doctor-'.Str::uuid().'@example.test',
+            'phone' => '+911234567892',
+            'qualification' => 'MBBS',
+            'experience_years' => 5,
+            'is_active' => true,
+        ]);
+        $secondDoctor = Doctor::create([
+            'category_id' => $category->id,
+            'hospital_id' => $hospital->id,
+            'name' => 'Second Doctor',
+            'email' => 'second-doctor-'.Str::uuid().'@example.test',
+            'phone' => '+911234567893',
+            'qualification' => 'MBBS',
+            'experience_years' => 5,
+            'is_active' => true,
+        ]);
+        $foreignDoctor = Doctor::create([
+            'category_id' => $category->id,
+            'hospital_id' => $otherHospital->id,
+            'name' => 'Foreign Doctor',
+            'email' => 'foreign-doctor-'.Str::uuid().'@example.test',
+            'phone' => '+911234567894',
+            'qualification' => 'MBBS',
+            'experience_years' => 5,
+            'is_active' => true,
+        ]);
+        $appointmentAt = now()->addDays(4)->startOfHour();
+
+        try {
+            $this->actingAs($hospitalUser, 'user')
+                ->post(route('user.appointments.store'), [
+                    'doctor_id' => $doctor->id,
+                    'patient_name' => 'Hospital Patient',
+                    'phone' => '+911234567895',
+                    'appointment_at' => $appointmentAt->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Consultation',
+                ])
+                ->assertRedirect(route('user.appointments.index'));
+
+            $this->assertDatabaseHas('user_appointments', [
+                'user_id' => $hospitalUser->id,
+                'doctor_id' => $doctor->id,
+                'patient_name' => 'Hospital Patient',
+            ]);
+
+            $this->from(route('user.appointments.index'))
+                ->actingAs($hospitalUser, 'user')
+                ->post(route('user.appointments.store'), [
+                    'doctor_id' => $foreignDoctor->id,
+                    'patient_name' => 'Invalid Doctor Patient',
+                    'phone' => '+911234567896',
+                    'appointment_at' => $appointmentAt->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Consultation',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHasErrors('doctor_id');
+
+            $this->actingAs($hospitalUser, 'user')
+                ->post(route('user.appointments.store'), [
+                    'doctor_id' => $secondDoctor->id,
+                    'patient_name' => 'Second Doctor Patient',
+                    'phone' => '+911234567897',
+                    'appointment_at' => $appointmentAt->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Consultation',
+                ])
+                ->assertRedirect(route('user.appointments.index'));
+
+            $this->from(route('user.appointments.index'))
+                ->actingAs($hospitalUser, 'user')
+                ->post(route('user.appointments.store'), [
+                    'doctor_id' => $doctor->id,
+                    'patient_name' => 'Duplicate Slot Patient',
+                    'phone' => '+911234567898',
+                    'appointment_at' => $appointmentAt->copy()->addMinutes(10)->format('Y-m-d\TH:i'),
+                    'duration_minutes' => 30,
+                    'reason' => 'Follow-up',
+                ])
+                ->assertRedirect(route('user.appointments.index'))
+                ->assertSessionHasErrors('appointment_at');
+        } finally {
+            Doctor::whereIn('id', [$doctor->id, $secondDoctor->id, $foreignDoctor->id])->delete();
+            $hospitalUser->delete();
+            $otherHospitalUser->delete();
+            $category->delete();
+        }
+    }
+
+    public function test_user_account_cannot_access_admin_registration_inbox(): void
+    {
+        $user = User::create([
+            'name' => 'Regular User',
+            'username' => Str::lower(Str::random(8)),
+            'role' => 2,
+            'email' => 'regular-'.Str::uuid().'@example.test',
+            'password' => Str::random(32),
+        ]);
+
+        try {
+            $this->actingAs($user, 'user')
+                ->get(route('admin.registration-requests.index'))
+                ->assertRedirect(route('admin.login'));
+        } finally {
+            $user->delete();
+        }
+    }
+
+    public function test_homepage_displays_active_database_listings_and_live_counts(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Website launch offer')
+            ->assertSee('20% off eligible domain registration')
+            ->assertSee('first 6 months')
+            ->assertSee('first 3 months')
+            ->assertSee('24/7 support for website and hosting assistance');
+
+        $suffix = Str::uuid()->toString();
+        $category = Category::create([
+            'name' => 'Homepage '.$suffix,
+            'visual_type' => 'icon',
+            'visual_value' => 'fas fa-user-md',
+            'is_active' => true,
+        ]);
+        $activeDoctor = Doctor::create([
+            'category_id' => $category->id,
+            'name' => 'Active doctor '.$suffix,
+            'email' => 'active-'.$suffix.'@example.test',
+            'phone' => '0000000000',
+            'qualification' => 'MBBS',
+            'is_active' => true,
+        ]);
+        $inactiveDoctor = Doctor::create([
+            'category_id' => $category->id,
+            'name' => 'Inactive doctor '.$suffix,
+            'email' => 'inactive-'.$suffix.'@example.test',
+            'phone' => '0000000000',
+            'qualification' => 'MBBS',
+            'is_active' => false,
+        ]);
+        $hospital = Hospital::create([
+            'name' => 'Active hospital '.$suffix,
+            'email' => 'hospital-'.$suffix.'@example.test',
+            'phone' => '0000000000',
+            'is_active' => true,
+        ]);
+
+        try {
+            $doctorCount = Doctor::where('is_active', true)->count();
+            $hospitalCount = Hospital::where('is_active', true)->count();
+
+            $this->get('/')
+                ->assertOk()
+                ->assertSee($activeDoctor->name)
+                ->assertSee($hospital->name)
+                ->assertDontSee($inactiveDoctor->name)
+                ->assertSee('<strong>'.number_format($doctorCount).'</strong>', false)
+                ->assertSee('<strong>'.number_format($hospitalCount).'</strong>', false);
+        } finally {
+            $activeDoctor->delete();
+            $inactiveDoctor->delete();
+            $hospital->delete();
+            $category->delete();
+        }
+    }
+
     public function test_admin_and_user_areas_redirect_to_their_own_login_pages(): void
     {
         $this->get('/admin')->assertRedirect('/admin/login');
@@ -61,6 +697,225 @@ class SeparateLoginPagesTest extends TestCase
         $this->assertSame(url('/admin'), route('admin.index'));
         $this->assertSame(url('/user'), route('user.index'));
         $this->assertSame(url('/user/packages'), route('user.packages.index'));
+        $this->assertSame(url('/admin/users/7/api-token'), route('admin.users.api-token', 7));
+        $this->assertSame(url('/admin/api-domains'), route('api-domains.index'));
+    }
+
+    public function test_user_api_endpoint_requires_an_api_token_or_sanctum_authentication(): void
+    {
+        $this->getJson('/api/user')->assertUnauthorized();
+    }
+
+    public function test_galleries_api_accepts_encrypted_user_api_key_and_returns_active_images(): void
+    {
+        $userId = null;
+
+        try {
+            $user = User::create([
+                'name' => 'Gallery API Test',
+                'username' => Str::lower(Str::random(8)),
+                'role' => 2,
+                'email' => Str::uuid().'@example.test',
+                'password' => Str::random(32),
+            ]);
+            $userId = $user->id;
+            $token = Str::random(16);
+            $user->api_token = $token;
+            $user->save();
+            $user->apiDomains()->create(['domain' => 'gallery-api.example.test']);
+            $activeImage = $user->galleryImages()->create([
+                'title' => 'Clinic gallery',
+                'caption' => 'Reception area',
+                'image_path' => '1/gallery-test.jpg',
+                'is_active' => true,
+            ]);
+            $inactiveImage = $user->galleryImages()->create([
+                'title' => 'Inactive image',
+                'caption' => null,
+                'image_path' => '1/inactive-gallery-test.jpg',
+            ]);
+            $inactiveImage->is_active = false;
+            $inactiveImage->save();
+
+            $this->getJson('/api/galleries', [
+                'X-API-KEY' => 'invalid-test-key',
+                'Origin' => 'https://gallery-api.example.test',
+            ])->assertUnauthorized()
+                ->assertJsonPath('message', 'Invalid API key');
+
+            $this->getJson('/api/galleries', [
+                'X-API-KEY' => $token,
+                'Origin' => 'https://other.example.test',
+            ])->assertForbidden();
+
+            $this->getJson('/api/galleries', [
+                'X-API-KEY' => $token,
+                'Origin' => 'https://gallery-api.example.test',
+            ])->assertOk()
+                ->assertJsonPath('error', false)
+                ->assertJsonCount(1, 'data')
+                ->assertJsonPath('data.0.id', $activeImage->id)
+                ->assertJsonPath('data.0.title', 'Clinic gallery')
+                ->assertJsonPath('data.0.image_url', asset('public/1/gallery-test.jpg'))
+                ->assertJsonMissingPath('data.0.image_path');
+        } finally {
+            if ($userId) {
+                UserApiDomain::where('user_id', $userId)->delete();
+                UserGalleryImage::where('user_id', $userId)->delete();
+                User::whereKey($userId)->delete();
+            }
+        }
+    }
+
+    public function test_admin_can_view_an_existing_api_token_without_replacing_it(): void
+    {
+        $userId = null;
+
+        try {
+            $user = User::create([
+                'name' => 'API Token Test',
+                'username' => Str::lower(Str::random(8)),
+                'role' => 2,
+                'email' => Str::uuid().'@example.test',
+                'password' => Str::random(32),
+            ]);
+            $userId = $user->id;
+            $admin = new Admin([
+                'name' => 'API Test Admin',
+                'email' => 'api-test-admin@example.test',
+                'password' => 'unused',
+            ]);
+            $admin->id = 1;
+
+            $response = $this->actingAs($admin, 'admin')
+                ->postJson(route('admin.users.api-token', $user));
+            $response->assertCreated()->assertHeader('Cache-Control', 'no-store, private');
+            $firstToken = $response->json('token');
+            $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{16}$/', $firstToken);
+
+            UserApiDomain::create([
+                'user_id' => $user->id,
+                'domain' => 'api-test.example.test',
+            ]);
+
+            $rawStoredToken = DB::table('users')->where('id', $user->id)->value('api_token');
+            $this->assertNotSame($firstToken, $rawStoredToken);
+            $this->assertSame($firstToken, $user->fresh()->api_token);
+
+            $this->withToken($firstToken)
+                ->withHeader('Origin', 'https://api-test.example.test')
+                ->getJson('/api/user')
+                ->assertOk()
+                ->assertJsonPath('id', $user->id)
+                ->assertJsonMissingPath('api_token');
+
+            $this->actingAs($admin, 'admin')
+                ->getJson(route('admin.users.api-token.view', $user))
+                ->assertOk()
+                ->assertHeader('Cache-Control', 'no-store, private')
+                ->assertJsonPath('token', $firstToken)
+                ->assertJsonPath('message', 'Existing API token. It has not been changed.');
+
+            $this->postJson(route('admin.users.api-token', $user))
+                ->assertConflict();
+            $this->assertSame($firstToken, $user->fresh()->api_token);
+            $this->withToken($firstToken)
+                ->withHeader('Origin', 'https://api-test.example.test')
+                ->getJson('/api/user')
+                ->assertOk();
+        } finally {
+            if ($userId) {
+                UserApiDomain::where('user_id', $userId)->delete();
+                User::whereKey($userId)->delete();
+            }
+        }
+    }
+
+    public function test_admin_can_bind_an_api_token_to_a_domain(): void
+    {
+        $userId = null;
+
+        try {
+            $user = User::create([
+                'name' => 'API Domain Test',
+                'username' => Str::lower(Str::random(8)),
+                'role' => 1,
+                'email' => Str::uuid().'@example.test',
+                'password' => Str::random(32),
+            ]);
+            $user->api_token = Str::random(16);
+            $user->save();
+            $userId = $user->id;
+            $admin = new Admin([
+                'name' => 'API Domain Test Admin',
+                'email' => 'api-domain-test-admin@example.test',
+                'password' => 'unused',
+            ]);
+            $admin->id = 1;
+            $token = $user->api_token;
+
+            $this->actingAs($admin, 'admin')
+                ->get(route('api-domains.index'))
+                ->assertOk()
+                ->assertSee('API Domains')
+                ->assertSee('API Domain Test');
+
+            $this->actingAs($admin, 'admin')
+                ->post(route('api-domains.store'), [
+                    'user_id' => $user->id,
+                    'domain' => '  Example.COM. ',
+                ])
+                ->assertRedirect(route('api-domains.index'));
+
+            $this->assertDatabaseHas('user_api_domains', [
+                'user_id' => $user->id,
+                'domain' => 'example.com',
+            ]);
+
+            $this->withToken($token)->getJson('/api/user')->assertForbidden();
+            $this->withToken($token)
+                ->withHeader('Origin', 'https://other.example.com')
+                ->getJson('/api/user')
+                ->assertForbidden();
+            $this->withToken($token)
+                ->withHeader('Origin', 'https://example.com')
+                ->getJson('/api/user')
+                ->assertOk()
+                ->assertJsonPath('id', $user->id);
+
+            $apiDomain = UserApiDomain::where('user_id', $user->id)->firstOrFail();
+            $this->actingAs($admin, 'admin')
+                ->patch(route('api-domains.status', $apiDomain))
+                ->assertRedirect(route('api-domains.index'));
+            $this->assertFalse($apiDomain->fresh()->is_active);
+            $this->withToken($token)
+                ->withHeader('Origin', 'https://example.com')
+                ->getJson('/api/user')
+                ->assertForbidden();
+
+            $this->actingAs($admin, 'admin')
+                ->patch(route('api-domains.status', $apiDomain))
+                ->assertRedirect(route('api-domains.index'));
+            $this->assertTrue($apiDomain->fresh()->is_active);
+            $this->withToken($token)
+                ->withHeader('Origin', 'https://example.com')
+                ->getJson('/api/user')
+                ->assertOk();
+
+            $this->actingAs($admin, 'admin')
+                ->delete(route('api-domains.destroy', $apiDomain))
+                ->assertRedirect(route('api-domains.index'));
+
+            $this->withToken($token)
+                ->withHeader('Origin', 'https://example.com')
+                ->getJson('/api/user')
+                ->assertForbidden();
+        } finally {
+            if ($userId) {
+                UserApiDomain::where('user_id', $userId)->delete();
+                User::whereKey($userId)->delete();
+            }
+        }
     }
 
     public function test_care_partner_dashboard_uses_its_own_panel_layout(): void

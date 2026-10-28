@@ -123,6 +123,17 @@
                           <i class="fas fa-key"></i> Login access
                         </button>
                       @endif
+                      @if ($hospital->user)
+                        <button
+                          class="doctor-login-button"
+                          type="button"
+                          data-api-access
+                          data-api-mode="{{ $hospital->user->api_token ? 'view' : 'create' }}"
+                          data-endpoint="{{ $hospital->user->api_token ? route('admin.users.api-token.view', $hospital->user) : route('admin.users.api-token', $hospital->user) }}"
+                          data-view-endpoint="{{ route('admin.users.api-token.view', $hospital->user) }}"
+                          title="{{ $hospital->user->api_token ? 'View the existing API token' : 'Create API access for this hospital' }}"
+                        ><i class="fas {{ $hospital->user->api_token ? 'fa-eye' : 'fa-code' }}"></i> {{ $hospital->user->api_token ? 'View API' : 'API access' }}</button>
+                      @endif
                     </div>
                   </td>
                 </tr>
@@ -234,6 +245,30 @@
       <p class="category-help" id="doctor-credentials-note">Passwords are hashed for sign-in and stored encrypted for secure administrator viewing.</p>
       <div class="category-form-actions">
         <button class="category-save" type="button" data-close-doctor-credentials>Done</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="category-modal" id="api-token-modal" hidden>
+  <section class="category-dialog doctor-credentials-dialog" role="dialog" aria-modal="true" aria-labelledby="api-token-title">
+    <div class="category-dialog-header">
+      <div>
+        <h2 id="api-token-title">API access token</h2>
+        <p id="api-token-message">Existing API token. It will not be changed.</p>
+      </div>
+      <button class="category-modal-close" type="button" aria-label="Close API token" data-close-api-token><i class="fas fa-times"></i></button>
+    </div>
+    <div class="doctor-credentials-content">
+      <div class="category-alert error" id="api-token-error" role="alert" hidden></div>
+      <div class="doctor-credential-row">
+        <span>Bearer token</span>
+        <strong id="generated-api-token"></strong>
+        <button class="category-icon-button" type="button" data-copy-api-token title="Copy API token" aria-label="Copy API token"><i class="far fa-copy"></i></button>
+      </div>
+      <p class="category-help">Send it as <code>Authorization: Bearer YOUR_TOKEN</code> when calling <code>/api/user</code>.</p>
+      <div class="category-form-actions">
+        <button class="category-save" type="button" data-close-api-token>Done</button>
       </div>
     </div>
   </section>

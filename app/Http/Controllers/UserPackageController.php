@@ -16,8 +16,8 @@ class UserPackageController extends Controller
             'user' => $user,
             'packages' => $user->packages()->with('services')->latest()->get(),
             'services' => $user->services()
-                ->whereNull('service_id')
                 ->where('is_active', true)
+                ->with('service')
                 ->orderBy('title')
                 ->get(),
         ]);
@@ -82,7 +82,6 @@ class UserPackageController extends Controller
                 Rule::exists('user_services', 'id')
                     ->where(fn ($query) => $query
                         ->where('user_id', $userId)
-                        ->whereNull('service_id')
                         ->where('is_active', true)),
             ],
         ]);

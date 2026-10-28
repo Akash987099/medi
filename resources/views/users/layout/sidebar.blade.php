@@ -17,6 +17,9 @@
         <i class="fas fa-user-md"></i><span>Doctors</span>
       </a>
       @endif
+      <a href="{{ route('user.appointments.index') }}" class="sidebar-link {{ request()->routeIs('user.appointments.*') ? 'active' : '' }}">
+        <i class="far fa-calendar-check"></i><span>Appointments</span>
+      </a>
       <a href="{{ route('user.reviews.index') }}" class="sidebar-link {{ request()->routeIs('user.reviews.*') ? 'active' : '' }}">
         <i class="far fa-star"></i><span>Reviews</span>
       </a>

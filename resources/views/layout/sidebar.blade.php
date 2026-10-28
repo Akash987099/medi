@@ -42,6 +42,15 @@
       <a href="#care-team" class="sidebar-link">
         <i class="fas fa-user-md"></i><span>Care team</span>
       </a>
+      <a href="{{ route('api-domains.index') }}" class="sidebar-link {{ request()->routeIs('api-domains.*') ? 'active' : '' }}">
+        <i class="fas fa-globe"></i><span>API Domains</span>
+      </a>
+      <a href="{{ route('admin.registration-requests.index') }}" class="sidebar-link {{ request()->routeIs('admin.registration-requests.*') ? 'active' : '' }}">
+        <i class="fas fa-clipboard-list"></i><span>Registration requests</span>
+      </a>
+      <a href="{{ route('admin.contact-messages.index') }}" class="sidebar-link {{ request()->routeIs('admin.contact-messages.*') ? 'active' : '' }}">
+        <i class="far fa-envelope"></i><span>Contact messages</span>
+      </a>
     </nav>
 
     <div class="sidebar-spacer"></div>

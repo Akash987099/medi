@@ -36,6 +36,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'review_qr_token',
+        'api_token',
     ];
 
     /**
@@ -47,11 +48,17 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'role' => 'integer',
+        'api_token' => 'encrypted',
     ];
 
     public function reviews(): HasMany
     {
         return $this->hasMany(UserReview::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(UserAppointment::class);
     }
 
     public function faqs(): HasMany
@@ -92,6 +99,11 @@ class User extends Authenticatable
     public function packages(): HasMany
     {
         return $this->hasMany(UserPackage::class);
+    }
+
+    public function apiDomains(): HasMany
+    {
+        return $this->hasMany(UserApiDomain::class);
     }
 
     public function sliderItems(): HasMany

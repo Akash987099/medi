@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminCarePartnerRegistrationController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CarePartnerRegistrationController;
+use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\DoctorController;
 use App\Http\Controllers\HospitalController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UserController;
@@ -23,6 +27,9 @@ use App\Http\Controllers\UserSmtpSettingsController;
 use App\Http\Controllers\UserSocialMediaController;
 use App\Http\Controllers\UserWebsiteSettingsController;
 use App\Http\Controllers\UserHospitalDoctorController;
+use App\Http\Controllers\UserAppointmentController;
+use App\Http\Controllers\UserApiTokenController;
+use App\Http\Controllers\UserApiDomainController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -36,9 +43,15 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route::get('/', function () {
-//     return view('welcome');
-// });
+Route::get('/', HomeController::class)->name('home');
+Route::get('register', [CarePartnerRegistrationController::class, 'create'])
+    ->name('care-partner-registration.create');
+Route::post('register', [CarePartnerRegistrationController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('care-partner-registration.store');
+Route::post('contact', [ContactMessageController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('contact.store');
 
 Route::controller(LoginController::class)->group(function () {
     Route::get('login', 'userLogin')->name('login');
@@ -62,6 +75,31 @@ Route::prefix('review')->name('public.reviews.')->controller(UserReviewControlle
 
 Route::middleware(['auth:admin'])->group(function () {
     Route::post('admin/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::get('admin/contact-messages', [ContactMessageController::class, 'index'])
+        ->name('admin.contact-messages.index');
+    Route::patch('admin/contact-messages/{contactMessage}/status', [ContactMessageController::class, 'updateStatus'])
+        ->whereNumber('contactMessage')
+        ->name('admin.contact-messages.status');
+    Route::get('admin/registration-requests', [AdminCarePartnerRegistrationController::class, 'index'])
+        ->name('admin.registration-requests.index');
+    Route::get('admin/registration-requests/{registrationRequest}', [AdminCarePartnerRegistrationController::class, 'show'])
+        ->whereNumber('registrationRequest')
+        ->name('admin.registration-requests.show');
+    Route::patch('admin/registration-requests/{registrationRequest}/status', [AdminCarePartnerRegistrationController::class, 'updateStatus'])
+        ->whereNumber('registrationRequest')
+        ->name('admin.registration-requests.status');
+    Route::post('admin/users/{user}/api-token', [UserApiTokenController::class, 'create'])
+        ->whereNumber('user')
+        ->name('admin.users.api-token');
+    Route::get('admin/users/{user}/api-token', [UserApiTokenController::class, 'view'])
+        ->whereNumber('user')
+        ->name('admin.users.api-token.view');
+    Route::get('admin/api-domains', [UserApiDomainController::class, 'index'])->name('api-domains.index');
+    Route::post('admin/api-domains', [UserApiDomainController::class, 'store'])->name('api-domains.store');
+    Route::patch('admin/api-domains/{apiDomain}/status', [UserApiDomainController::class, 'toggleStatus'])
+        ->name('api-domains.status');
+    Route::delete('admin/api-domains/{apiDomain}', [UserApiDomainController::class, 'destroy'])
+        ->name('api-domains.destroy');
 
     Route::controller(AdminController::class)->group(function () {
         Route::get('admin', 'index')->name('admin.index');
@@ -115,6 +153,13 @@ Route::prefix('user')->middleware(['auth:user'])->group(function () {
         ->name('user.doctors.index');
     Route::post('doctors', [UserHospitalDoctorController::class, 'store'])
         ->name('user.doctors.store');
+
+    Route::prefix('appointments')->name('user.appointments.')->controller(UserAppointmentController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::put('{appointment}', 'update')->whereNumber('appointment')->name('update');
+        Route::delete('{appointment}', 'destroy')->whereNumber('appointment')->name('destroy');
+    });
 
     Route::prefix('reviews')->name('user.reviews.')->controller(UserReviewController::class)->group(function () {
         Route::get('', 'index')->name('index');
