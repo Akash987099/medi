@@ -62,7 +62,9 @@ class UserSmtpSettingsController extends Controller
                 'transport' => 'smtp',
                 'host' => $settings->host,
                 'port' => $settings->port,
-                'scheme' => $settings->encryption === 'ssl' ? 'smtps' : 'smtp',
+                // Keep the test path identical to the queued bulk-email transport.
+                'scheme' => $settings->encryption === 'ssl' ? 'smtps' : null,
+                'encryption' => $settings->encryption === 'none' ? null : $settings->encryption,
                 'username' => $settings->username,
                 'password' => $settings->password,
                 'timeout' => 10,

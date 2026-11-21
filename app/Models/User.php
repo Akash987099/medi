@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'email',
         'password',
+        'api_access'
     ];
 
     /**
@@ -135,4 +136,42 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserWebsiteSetting::class);
     }
+
+    public function aiConversations(): HasMany
+    {
+        return $this->hasMany(UserAiConversation::class);
+    }
+
+    public function roles(): HasMany
+    {
+        return $this->hasMany(UserRole::class);
+    }
+
+    public function staffMembers(): HasMany
+    {
+        return $this->hasMany(UserStaff::class);
+    }
+
+    public function books(): HasMany
+    {
+        return $this->hasMany(UserBook::class);
+    }
+
+    public function bookGalleryImages(): HasMany
+    {
+        return $this->hasMany(UserBookGalleryImage::class);
+    }
+
+    public function patients(): HasMany
+    {
+        return $this->hasMany(UserPatient::class);
+    }
+
+    public function panelSettings(): HasOne
+    {
+        return $this->hasOne(UserPanelSetting::class);
+    }
+
+    public function emailTemplates(): HasMany { return $this->hasMany(UserEmailTemplate::class); }
+    public function emailMessages(): HasMany { return $this->hasMany(UserEmailMessage::class); }
 }

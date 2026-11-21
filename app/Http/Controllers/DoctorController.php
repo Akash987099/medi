@@ -18,7 +18,7 @@ class DoctorController extends Controller
     public function index()
     {
         return view('doctor.index', [
-            'doctors' => Doctor::with(['category', 'hospital', 'user', 'loginCredential'])->latest()->paginate(10),
+            'doctors' => Doctor::with(['category', 'hospital', 'user', 'loginCredential'])->latest()->paginate(20),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(),
             'hospitals' => Hospital::orderBy('name')->get(),
         ]);
@@ -44,6 +44,7 @@ class DoctorController extends Controller
                 $doctor->user->update([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
+                    'api_access' => $validated['api_access'],
                 ]);
             }
         });
@@ -221,8 +222,10 @@ class DoctorController extends Controller
             'experience_years' => ['required', 'integer', 'min:0', 'max:80'],
             'address' => ['nullable', 'string', 'max:2000'],
             'bio' => ['nullable', 'string', 'max:5000'],
+            'api_access' => ['nullable', 'integer', 'in:0,1,2,3'],
         ], [
             'category_id.exists' => 'Select an active category.',
+            'api_access.between' => 'Please select a valid service option.',
         ]);
     }
 }

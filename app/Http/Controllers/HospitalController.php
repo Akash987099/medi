@@ -16,7 +16,7 @@ class HospitalController extends Controller
     public function index()
     {
         return view('hospital.index', [
-            'hospitals' => Hospital::with(['user', 'loginCredential'])->latest()->paginate(10),
+            'hospitals' => Hospital::with(['user', 'loginCredential'])->latest()->paginate(20),
         ]);
     }
 
@@ -32,13 +32,14 @@ class HospitalController extends Controller
     public function update(Request $request, Hospital $hospital)
     {
         $validated = $this->validateHospital($request, $hospital);
-
+        // dd($validated);
         DB::transaction(function () use ($hospital, $validated): void {
             $hospital->update($validated);
             if ($hospital->user) {
                 $hospital->user->update([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
+                    'api_access' => $validated['api_access'],
                 ]);
             }
         });
@@ -209,6 +210,7 @@ class HospitalController extends Controller
             'website_url' => ['nullable', 'url', 'max:2048'],
             'address' => ['nullable', 'string', 'max:2000'],
             'bio' => ['nullable', 'string', 'max:5000'],
+           'api_access' => ['nullable', 'integer', 'in:0,1,2,3'],
         ]);
     }
 }

@@ -65,6 +65,7 @@
                 <th scope="col">Experience</th>
                 <th scope="col">Website</th>
                 <th scope="col">Status</th>
+                <th scope="col">API Access</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
@@ -92,6 +93,26 @@
                     @endif
                   </td>
                   <td><span class="category-status {{ $doctor->is_active ? 'active' : 'inactive' }}">{{ $doctor->is_active ? 'Active' : 'Inactive' }}</span></td>
+                  <td>
+                    <span class="category-status {{ $doctor->user?->api_access == 3 ? 'active' : 'inactive' }}">
+                        @switch($doctor->user?->api_access)
+                            @case(0)
+                                Website only
+                                @break
+                            @case(1)
+                                MediCare listing only
+                                @break
+                            @case(2)
+                                Website + MediCare listing
+                                @break
+                            @case(3)
+                                API & backend integration
+                                @break
+                            @default
+                                Not enabled
+                        @endswitch
+                    </span>
+                </td>
                   <td>
                     <div class="category-actions doctor-actions">
                       <button
@@ -247,6 +268,20 @@
           </select>
           @error('hospital_id')<p class="category-error">{{ $message }}</p>@enderror
         </div>
+        <div class="category-field">
+          <label for="api_access">Select a service</label>
+          <select class="category-input" id="api_access" name="api_access" required>
+              <option value="">Select a service</option>
+              <option value="0" {{ (string) old('api_access', $doctors->user?->api_access ?? '') === '0' ? 'selected' : '' }}>Website only</option>
+              <option value="1" {{ (string) old('api_access', $doctors->user?->api_access ?? '') === '1' ? 'selected' : '' }}>MediCare listing only</option>
+              <option value="2" {{ (string) old('api_access', $doctors->user?->api_access ?? '') === '2' ? 'selected' : '' }}>Website + MediCare listing</option>
+              <option value="3" {{ (string) old('api_access', $doctors->user?->api_access ?? '') === '3' ? 'selected' : '' }}>API &amp; backend integration</option>
+          </select>
+
+          @error('api_access')
+              <p class="category-error">{{ $message }}</p>
+          @enderror
+      </div>
         <div class="category-field">
           <label for="doctor-email">Email address</label>
           <input class="category-input" id="doctor-email" name="email" type="email" value="{{ old('email') }}" maxlength="191" placeholder="doctor@example.com" required>

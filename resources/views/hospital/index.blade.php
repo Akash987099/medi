@@ -61,10 +61,14 @@
                 <th scope="col">Contact</th>
                 <th scope="col">Website</th>
                 <th scope="col">Status</th>
+                <th scope="col">API Access</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
+              {{-- @php
+              dd($hospitals);
+              @endphp --}}
               @forelse ($hospitals as $hospital)
                 <tr>
                   <td>
@@ -83,7 +87,26 @@
                       <span class="category-date">—</span>
                     @endif
                   </td>
-                  <td><span class="category-status {{ $hospital->is_active ? 'active' : 'inactive' }}">{{ $hospital->is_active ? 'Active' : 'Inactive' }}</span></td>
+                  <td>
+                    <span class="category-status {{ $hospital->user?->api_access == 3 ? 'active' : 'inactive' }}">
+                        @switch($hospital->user?->api_access)
+                            @case(0)
+                                Website only
+                                @break
+                            @case(1)
+                                MediCare listing only
+                                @break
+                            @case(2)
+                                Website + MediCare listing
+                                @break
+                            @case(3)
+                                API & backend integration
+                                @break
+                            @default
+                                Not enabled
+                        @endswitch
+                    </span>
+                </td>
                   <td>
                     <div class="category-actions doctor-actions">
                       <button
@@ -197,6 +220,20 @@
           <input class="category-input" id="hospital-phone" name="phone" type="tel" value="{{ old('phone') }}" maxlength="30" placeholder="+1 555 0123" required>
           @error('phone')<p class="category-error">{{ $message }}</p>@enderror
         </div>
+        <div class="category-field">
+          <label for="api_access">Select a service</label>
+          <select class="category-input" id="api_access" name="api_access" required>
+              <option value="">Select a service</option>
+              <option value="0" {{ (string) old('api_access', $hospital->api_access ?? '') === '0' ? 'selected' : '' }}>Website only</option>
+              <option value="1" {{ (string) old('api_access', $hospital->api_access ?? '') === '1' ? 'selected' : '' }}>MediCare listing only</option>
+              <option value="2" {{ (string) old('api_access', $hospital->api_access ?? '') === '2' ? 'selected' : '' }}>Website + MediCare listing</option>
+              <option value="3" {{ (string) old('api_access', $hospital->api_access ?? '') === '3' ? 'selected' : '' }}>API &amp; backend integration</option>
+          </select>
+
+          @error('api_access')
+              <p class="category-error">{{ $message }}</p>
+          @enderror
+      </div>
         <div class="category-field doctor-field-wide">
           <label for="hospital-website">Website URL <span class="doctor-optional">(optional)</span></label>
           <input class="category-input" id="hospital-website" name="website_url" type="url" value="{{ old('website_url') }}" maxlength="2048" placeholder="https://example.com">

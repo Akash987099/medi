@@ -2,6 +2,12 @@
 
 return [
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'chat_model' => env('GEMINI_CHAT_MODEL', 'gemini-3-flash-preview'),
+        'image_model' => env('GEMINI_IMAGE_MODEL', 'gemini-2.5-flash-image'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

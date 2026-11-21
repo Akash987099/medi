@@ -30,6 +30,14 @@ use App\Http\Controllers\UserHospitalDoctorController;
 use App\Http\Controllers\UserAppointmentController;
 use App\Http\Controllers\UserApiTokenController;
 use App\Http\Controllers\UserApiDomainController;
+use App\Http\Controllers\UserAiStudioController;
+use App\Http\Controllers\UserRoleController;
+use App\Http\Controllers\UserStaffController;
+use App\Http\Controllers\UserBookController;
+use App\Http\Controllers\UserPatientController;
+use App\Http\Controllers\UserPanelSettingsController;
+use App\Http\Controllers\UserEmailTemplateController;
+use App\Http\Controllers\UserEmailSendController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -148,6 +156,56 @@ Route::prefix('user')->middleware(['auth:user'])->group(function () {
     Route::controller(UserController::class)->group(function () {
         Route::get('', 'index')->name('user.index');
     });
+
+    Route::prefix('ai-studio')->name('user.ai-studio.')->controller(UserAiStudioController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::get('conversations/{conversation}', 'conversation')->whereNumber('conversation')->name('conversations.show');
+        Route::post('chat', 'chat')->middleware('throttle:20,1')->name('chat');
+        Route::post('image', 'image')->middleware('throttle:5,1')->name('image');
+    });
+
+    Route::prefix('roles')->name('user.roles.')->controller(UserRoleController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::put('{role}', 'update')->whereNumber('role')->name('update');
+        Route::patch('{role}/status', 'toggleStatus')->whereNumber('role')->name('status');
+        Route::delete('{role}', 'destroy')->whereNumber('role')->name('destroy');
+    });
+
+    Route::prefix('staff')->name('user.staff.')->controller(UserStaffController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::put('{staff}', 'update')->whereNumber('staff')->name('update');
+        Route::patch('{staff}/status', 'toggleStatus')->whereNumber('staff')->name('status');
+        Route::delete('{staff}', 'destroy')->whereNumber('staff')->name('destroy');
+    });
+
+    Route::prefix('books')->name('user.books.')->controller(UserBookController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::post('gallery', 'storeGalleryImage')->name('gallery.store');
+        Route::delete('gallery/{image}', 'destroyGalleryImage')->whereNumber('image')->name('gallery.destroy');
+        Route::get('{book}/read', 'read')->whereNumber('book')->name('read');
+        Route::put('{book}', 'update')->whereNumber('book')->name('update');
+        Route::patch('{book}/status', 'toggleStatus')->whereNumber('book')->name('status');
+        Route::delete('{book}', 'destroy')->whereNumber('book')->name('destroy');
+    });
+
+    Route::prefix('patients')->name('user.patients.')->controller(UserPatientController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::post('', 'store')->name('store');
+        Route::put('{patient}', 'update')->whereNumber('patient')->name('update');
+        Route::patch('{patient}/status', 'toggleStatus')->whereNumber('patient')->name('status');
+        Route::delete('{patient}', 'destroy')->whereNumber('patient')->name('destroy');
+    });
+
+    Route::prefix('color-settings')->name('user.color-settings.')->controller(UserPanelSettingsController::class)->group(function () {
+        Route::get('', 'index')->name('index');
+        Route::put('', 'save')->name('save');
+        Route::post('reset', 'reset')->name('reset');
+    });
+    Route::prefix('email/templates')->name('user.email.templates.')->controller(UserEmailTemplateController::class)->group(function(){Route::get('', 'index')->name('index');Route::post('', 'store')->name('store');Route::put('{template}','update')->whereNumber('template')->name('update');Route::patch('{template}/status','toggleStatus')->whereNumber('template')->name('status');Route::delete('{template}','destroy')->whereNumber('template')->name('destroy');});
+    Route::prefix('email/send')->name('user.email.send.')->controller(UserEmailSendController::class)->group(function(){Route::get('', 'index')->name('index');Route::post('', 'send')->middleware('throttle:15,1')->name('send');});
 
     Route::get('doctors', [UserHospitalDoctorController::class, 'index'])
         ->name('user.doctors.index');

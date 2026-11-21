@@ -24,6 +24,11 @@
       --gold: #c39a58;
       --shadow: 0 12px 36px rgba(46, 60, 48, .055);
     }
+    @php($panelTheme = auth('user')->user()?->panelSettings)
+    @if ($panelTheme)
+    :root { --green: {{ $panelTheme->primary_color }}; --green-dark: {{ $panelTheme->primary_color }}; --paper: {{ $panelTheme->background_color }}; --ink: {{ $panelTheme->text_color }}; --clay: {{ $panelTheme->accent_color }}; --white: {{ $panelTheme->panel_color }}; }
+    .sidebar, .brand { background: {{ $panelTheme->sidebar_color }}; }
+    @endif
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
     button, input { font: inherit; }
@@ -45,6 +50,12 @@
     .sidebar-link i { width: 17px; text-align: center; font-size: 14px; }
     .sidebar-link:hover { color: var(--green-dark); background: #f4f6f1; }
     .sidebar-link.active { color: var(--green-dark); background: var(--sage); font-weight: 700; }
+    .sidebar-link.ai-agent-link { min-height: 54px; gap: 10px; padding: 7px 10px; color: #49634e; background: linear-gradient(135deg, #edf4e9, #f7f2e9); border: 1px solid #e3eadf; }
+    .sidebar-link.ai-agent-link:hover { color: #294a31; background: linear-gradient(135deg, #e5f0e1, #f5ecdf); }
+    .sidebar-link.ai-agent-link.active { color: #294a31; background: linear-gradient(135deg, #dfeedd, #f4e7d7); border-color: #cdddc9; }
+    .ai-agent-icon { width:31px; height:31px; flex:0 0 31px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#527a5a,#789568); border-radius:9px; box-shadow:0 4px 10px rgba(70,106,75,.18); font-size:12px; }
+    .sidebar-link .ai-agent-icon i { width:auto; font-size:12px; }
+    .ai-agent-copy { min-width:0; display:grid; gap:2px; }.ai-agent-copy strong { font-size:12px; line-height:1.1; }.ai-agent-copy small { overflow:hidden; color:#849084; font-size:9px; font-weight:500; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }.sidebar-link.ai-agent-link .nav-count { color:#537458; background:#fffefa; }
     .sidebar-toggle { width: 100%; text-align: left; background: transparent; border: 0; cursor: pointer; }
     .submenu-chevron { width: auto !important; margin-left: auto; font-size: 10px !important; transition: transform .18s ease; }
     .sidebar-toggle[aria-expanded="true"] .submenu-chevron { transform: rotate(180deg); }
