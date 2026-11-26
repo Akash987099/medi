@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\GalleryController;
+use App\Http\Controllers\CommonController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -16,6 +17,10 @@ use App\Http\Controllers\API\GalleryController;
 
 Route::middleware('api.token')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::prefix('common')->controller(CommonController::class)->group(function () {
+    Route::get('categories', 'categories');
 });
 
 
