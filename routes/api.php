@@ -19,9 +19,11 @@ Route::middleware('api.token')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+
 Route::prefix('common')->controller(CommonController::class)->group(function () {
     Route::get('definitions', 'definitions');
     Route::get('categories', 'categories');
+    Route::get('/{category_url}', 'categoryData');
 });
 
 
