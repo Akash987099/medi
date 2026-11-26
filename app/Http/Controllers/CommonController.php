@@ -31,6 +31,11 @@ class CommonController extends Controller
                     'id' => 3,
                     'description' => 'Use hospital to search for a specific hospital or healthcare facility.',
                 ],
+
+                'service-details' => [
+                    'id' => 4,
+                    'description' => 'Use service-details to search for information about a specific healthcare service.',
+                ],
             ];
 
         return response()->json($definitions);
@@ -104,6 +109,20 @@ class CommonController extends Controller
     {
         $userIds = User::where('role', $user_type) ->whereIn('api_access', [1, 2])->get()->pluck('id');
         return $userIds;
+    }
+
+    public function doctors()
+    {
+        $get_users = $this->get_users(2);
+        $doctors = Doctor::where('is_active', 1)
+            ->whereIn('user_id', $get_users)
+            ->get()
+            ->map(function ($doctor) {
+                $doctor->url = Str::slug($doctor->name);
+                return $doctor;
+            });
+
+        return response()->json($doctors);
     }
 
 }
