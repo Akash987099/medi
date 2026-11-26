@@ -8,6 +8,30 @@ use Illuminate\Support\Str;
 
 class CommonController extends Controller
 {
+    public function definitions()
+    {
+       $definitions = [
+                'message' => 'These definitions are provided only for help and guidance purposes. Use them to understand available options and pass the appropriate parameters when calling other APIs according to your requirements.',
+
+                'subcategory' => [
+                    'id' => 1,
+                    'description' => 'Use subcategory to specify a particular subcategory when searching for related healthcare services or information.',
+                ],
+
+                'doctor' => [
+                    'id' => 2,
+                    'description' => 'Use doctor to search for a specific doctor, medical specialist, or healthcare professional.',
+                ],
+
+                'hospital' => [
+                    'id' => 3,
+                    'description' => 'Use hospital to search for a specific hospital or healthcare facility.',
+                ],
+            ];
+
+        return response()->json($definitions);
+    }
+
     public function categories()
     {
         $categories = Category::where('is_active', 1)

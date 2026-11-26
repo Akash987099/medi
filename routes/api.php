@@ -20,6 +20,7 @@ Route::middleware('api.token')->get('/user', function (Request $request) {
 });
 
 Route::prefix('common')->controller(CommonController::class)->group(function () {
+    Route::get('definitions', 'definitions');
     Route::get('categories', 'categories');
 });
 
