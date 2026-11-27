@@ -130,6 +130,8 @@
                         data-website="{{ $doctor->website_url }}"
                         data-qualification="{{ $doctor->qualification }}"
                         data-experience="{{ $doctor->experience_years }}"
+                        data-opening-time="{{ $doctor->opening_time?->format('H:i') }}"
+                        data-closing-time="{{ $doctor->closing_time?->format('H:i') }}"
                         data-address="{{ $doctor->address }}"
                         data-bio="{{ $doctor->bio }}"
                       ><i class="far fa-edit"></i></button>
@@ -301,6 +303,16 @@
           <label for="doctor-experience">Experience (years)</label>
           <input class="category-input" id="doctor-experience" name="experience_years" type="number" value="{{ old('experience_years', 0) }}" min="0" max="80" required>
           @error('experience_years')<p class="category-error">{{ $message }}</p>@enderror
+        </div>
+        <div class="category-field">
+          <label for="doctor-opening-time">Opening time <span class="doctor-optional">(optional)</span></label>
+          <input class="category-input" id="doctor-opening-time" name="opening_time" type="time" value="{{ old('opening_time') }}">
+          @error('opening_time')<p class="category-error">{{ $message }}</p>@enderror
+        </div>
+        <div class="category-field">
+          <label for="doctor-closing-time">Closing time <span class="doctor-optional">(optional)</span></label>
+          <input class="category-input" id="doctor-closing-time" name="closing_time" type="time" value="{{ old('closing_time') }}">
+          @error('closing_time')<p class="category-error">{{ $message }}</p>@enderror
         </div>
         <div class="category-field doctor-field-wide">
           <label for="doctor-website">Website URL <span class="doctor-optional">(optional)</span></label>

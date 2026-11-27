@@ -51,27 +51,66 @@ class UserHospitalDoctorController extends Controller
         abort_unless($request->user('user')->role === 1, 403);
 
         $hospital = Hospital::where('user_id', $request->user('user')->id)->firstOrFail();
-        $validated = $request->validate([
-            'category_id' => [
-                'required',
-                Rule::exists('categories', 'id')->where('is_active', true),
-            ],
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', 'max:191', 'unique:doctors,email', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:30'],
-            'website_url' => ['nullable', 'url', 'max:2048'],
-            'qualification' => ['required', 'string', 'max:160'],
-            'experience_years' => ['required', 'integer', 'min:0', 'max:80'],
-            'address' => ['nullable', 'string', 'max:2000'],
-            'bio' => ['nullable', 'string', 'max:5000'],
-        ], [
-            'category_id.exists' => 'Select an active category.',
-        ]);
+        $validated = $this->validatedDoctor($request);
 
         $hospital->doctors()->create($validated + ['is_active' => true]);
 
         return redirect()
             ->route('user.doctors.index')
             ->with('status', 'Doctor added to your hospital successfully.');
+    }
+
+    public function update(Request $request, int $doctor)
+    {
+        abort_unless($request->user('user')->role === 1, 403);
+
+        $hospital = Hospital::where('user_id', $request->user('user')->id)->firstOrFail();
+        $doctor = $hospital->doctors()->findOrFail($doctor);
+        $validated = $this->validatedDoctor($request, $doctor);
+        $doctor->update($validated);
+
+        if ($doctor->user) {
+            $doctor->user->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+            ]);
+        }
+
+        return redirect()
+            ->route('user.doctors.index')
+            ->with('status', 'Doctor details updated successfully.');
+    }
+
+    private function validatedDoctor(Request $request, ?Doctor $doctor = null): array
+    {
+        $doctorEmail = Rule::unique('doctors', 'email');
+        $userEmail = Rule::unique('users', 'email');
+        if ($doctor) {
+            $doctorEmail->ignore($doctor->id);
+            if ($doctor->user_id) {
+                $userEmail->ignore($doctor->user_id);
+            }
+        }
+
+        return $request->validate([
+            'category_id' => [
+                'required',
+                Rule::exists('categories', 'id')->where('is_active', true),
+            ],
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:191', $doctorEmail, $userEmail],
+            'phone' => ['required', 'string', 'max:30'],
+            'website_url' => ['nullable', 'url', 'max:2048'],
+            'qualification' => ['required', 'string', 'max:160'],
+            'experience_years' => ['required', 'integer', 'min:0', 'max:80'],
+            'opening_time' => ['nullable', 'date_format:H:i'],
+            'closing_time' => ['nullable', 'date_format:H:i', 'after:opening_time'],
+            'address' => ['nullable', 'string', 'max:2000'],
+            'bio' => ['nullable', 'string', 'max:5000'],
+        ], [
+            'category_id.exists' => 'Select an active category.',
+        ], [
+            'closing_time.after' => 'Closing time must be after opening time.',
+        ]);
     }
 }

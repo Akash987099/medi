@@ -86,6 +86,9 @@
                   @if ($doctor->experience_years !== null)
                     <span><i class="far fa-clock" aria-hidden="true"></i> {{ $doctor->experience_years }} {{ \Illuminate\Support\Str::plural('year', $doctor->experience_years) }} experience</span>
                   @endif
+                  @if ($doctor->opening_time || $doctor->closing_time)
+                    <span><i class="far fa-calendar-alt" aria-hidden="true"></i> Clinic: {{ $doctor->opening_time?->format('h:i A') ?? '—' }} to {{ $doctor->closing_time?->format('h:i A') ?? '—' }}</span>
+                  @endif
                   @if ($doctor->email)
                     <a href="mailto:{{ $doctor->email }}"><i class="far fa-envelope" aria-hidden="true"></i> {{ $doctor->email }}</a>
                   @endif
@@ -96,7 +99,29 @@
                 @if ($doctor->bio)
                   <p class="hospital-doctor-bio">{{ $doctor->bio }}</p>
                 @endif
+                <div class="hospital-doctor-actions">
+                  <button type="button" onclick="document.getElementById('edit-doctor-{{ $doctor->id }}').showModal()"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
+                </div>
               </div>
+              <dialog class="hospital-doctor-dialog" id="edit-doctor-{{ $doctor->id }}">
+                <header><strong>Edit doctor</strong><button type="button" onclick="this.closest('dialog').close()" aria-label="Close"><i class="fas fa-times"></i></button></header>
+                <form method="POST" action="{{ route('user.doctors.update', $doctor->id) }}">
+                  @csrf
+                  @method('PUT')
+                  <label><span>Full name</span><input name="name" value="{{ $doctor->name }}" maxlength="120" required></label>
+                  <label><span>Specialty</span><select name="category_id" required><option value="">Select a category</option>@foreach ($categories as $category)<option value="{{ $category->id }}" @selected($doctor->category_id === $category->id)>{{ $category->name }}</option>@endforeach</select></label>
+                  <label><span>Email</span><input type="email" name="email" value="{{ $doctor->email }}" maxlength="191" required></label>
+                  <label><span>Phone</span><input type="tel" name="phone" value="{{ $doctor->phone }}" maxlength="30" required></label>
+                  <label><span>Qualification</span><input name="qualification" value="{{ $doctor->qualification }}" maxlength="160" required></label>
+                  <label><span>Experience (years)</span><input type="number" name="experience_years" value="{{ $doctor->experience_years }}" min="0" max="80" required></label>
+                  <label><span>Opening time <em>(optional)</em></span><input type="time" name="opening_time" value="{{ $doctor->opening_time?->format('H:i') }}">@error('opening_time')<small>{{ $message }}</small>@enderror</label>
+                  <label><span>Closing time <em>(optional)</em></span><input type="time" name="closing_time" value="{{ $doctor->closing_time?->format('H:i') }}">@error('closing_time')<small>{{ $message }}</small>@enderror</label>
+                  <label class="wide"><span>Website <em>(optional)</em></span><input type="url" name="website_url" value="{{ $doctor->website_url }}" maxlength="2048"></label>
+                  <label class="wide"><span>Address <em>(optional)</em></span><textarea name="address" maxlength="2000" rows="2">{{ $doctor->address }}</textarea></label>
+                  <label class="wide"><span>About doctor <em>(optional)</em></span><textarea name="bio" maxlength="5000" rows="3">{{ $doctor->bio }}</textarea></label>
+                  <footer><button type="button" onclick="this.closest('dialog').close()">Cancel</button><button type="submit">Save changes</button></footer>
+                </form>
+              </dialog>
             </article>
           @empty
             <div class="hospital-doctors-empty">
@@ -156,6 +181,16 @@
               <span>Experience (years)</span>
               <input type="number" name="experience_years" value="{{ old('experience_years', 0) }}" min="0" max="80" required>
               @error('experience_years')<small>{{ $message }}</small>@enderror
+            </label>
+            <label>
+              <span>Opening time <em>(optional)</em></span>
+              <input type="time" name="opening_time" value="{{ old('opening_time') }}">
+              @error('opening_time')<small>{{ $message }}</small>@enderror
+            </label>
+            <label>
+              <span>Closing time <em>(optional)</em></span>
+              <input type="time" name="closing_time" value="{{ old('closing_time') }}">
+              @error('closing_time')<small>{{ $message }}</small>@enderror
             </label>
             <label>
               <span>Website <em>(optional)</em></span>
@@ -221,6 +256,20 @@
   .hospital-doctor-details i { width: 14px; color: var(--green); }
   .hospital-doctor-details a:hover { color: var(--green-dark); text-decoration: underline; }
   .hospital-doctor-bio { margin: 10px 0 0; color: #647064; font-size: 10px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+  .hospital-doctor-actions { margin-top: 12px; }
+  .hospital-doctor-actions button { min-height: 29px; padding: 0 9px; color: #5c6e5d; background: #f1f4ef; border: 1px solid #e5eae2; border-radius: 6px; cursor: pointer; font-size: 10px; font-weight: 700; }
+  .hospital-doctor-dialog { width: min(calc(100% - 30px), 620px); max-height: calc(100vh - 30px); padding: 0; overflow: auto; border: 1px solid #dce5d9; border-radius: 13px; }
+  .hospital-doctor-dialog::backdrop { background: rgba(38, 56, 47, .4); }
+  .hospital-doctor-dialog > header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; background: #f3f7f0; }
+  .hospital-doctor-dialog > header button { border: 0; background: transparent; cursor: pointer; }
+  .hospital-doctor-dialog form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 20px; }
+  .hospital-doctor-dialog label { display: grid; gap: 6px; color: #59665b; font-size: 11px; font-weight: 650; }
+  .hospital-doctor-dialog input, .hospital-doctor-dialog select, .hospital-doctor-dialog textarea { width: 100%; min-height: 38px; padding: 9px 10px; color: var(--ink); background: #fff; border: 1px solid #e2e5dc; border-radius: 7px; font: inherit; font-size: 11px; }
+  .hospital-doctor-dialog textarea { resize: vertical; }
+  .hospital-doctor-dialog small { color: #a23e35; font-size: 10px; font-weight: 400; }
+  .hospital-doctor-dialog footer { display: flex; justify-content: flex-end; gap: 7px; grid-column: 1 / -1; }
+  .hospital-doctor-dialog footer button { min-height: 36px; padding: 0 12px; border: 1px solid #dfe5dc; border-radius: 7px; background: #fff; cursor: pointer; }
+  .hospital-doctor-dialog footer button[type=submit] { color: #fff; background: var(--green-dark); border-color: var(--green-dark); }
   .hospital-doctors-empty { grid-column: 1 / -1; display: grid; justify-items: center; padding: 46px 20px; text-align: center; }
   .hospital-doctors-empty > span { width: 46px; height: 46px; display: grid; place-items: center; color: var(--green); background: var(--sage); border-radius: 50%; }
   .hospital-doctors-empty h3 { margin: 14px 0 5px; font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; }
@@ -235,5 +284,6 @@
   .hospital-doctors-heading { flex-direction: column; } .hospital-doctors-filter { width: 100%; } }
   @media (max-width: 700px) { .hospital-doctors-grid { grid-template-columns: 1fr; } }
   @media (max-width: 520px) { .hospital-doctors-filter { flex-wrap: wrap; } .hospital-doctors-search { flex-basis: 100%; } .hospital-doctor-card { padding: 12px; } }
+  @media (max-width: 520px) { .hospital-doctor-dialog form { grid-template-columns: 1fr; } .hospital-doctor-dialog label.wide { grid-column: auto; } }
 </style>
 @endsection

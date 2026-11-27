@@ -20,6 +20,8 @@ class Doctor extends Model
         'website_url',
         'qualification',
         'experience_years',
+        'opening_time',
+        'closing_time',
         'address',
         'bio',
         'is_active',
@@ -29,6 +31,8 @@ class Doctor extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'experience_years' => 'integer',
+        'opening_time' => 'datetime:H:i',
+        'closing_time' => 'datetime:H:i',
     ];
 
     public function category(): BelongsTo

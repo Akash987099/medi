@@ -211,6 +211,9 @@ Route::prefix('user')->middleware(['auth:user'])->group(function () {
         ->name('user.doctors.index');
     Route::post('doctors', [UserHospitalDoctorController::class, 'store'])
         ->name('user.doctors.store');
+    Route::put('doctors/{doctor}', [UserHospitalDoctorController::class, 'update'])
+        ->whereNumber('doctor')
+        ->name('user.doctors.update');
 
     Route::prefix('appointments')->name('user.appointments.')->controller(UserAppointmentController::class)->group(function () {
         Route::get('', 'index')->name('index');

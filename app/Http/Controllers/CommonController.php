@@ -85,6 +85,7 @@ class CommonController extends Controller
                 ->get()
                 ->map(function ($doctor) {
                     $doctor->url = Str::slug($doctor->name);
+                    $doctor->is_active = $this->isDoctorAvailableNow($doctor) ? 1 : 0;
                     return $doctor;
                 });
 
@@ -119,10 +120,37 @@ class CommonController extends Controller
             ->get()
             ->map(function ($doctor) {
                 $doctor->url = Str::slug($doctor->name);
+                $doctor->is_active = $this->isDoctorAvailableNow($doctor) ? 1 : 0;
+
                 return $doctor;
             });
 
         return response()->json($doctors);
+    }
+
+    /**
+     * Determine the doctor's effective availability without changing the
+     * administrator-controlled is_active value in the database.
+     */
+    private function isDoctorAvailableNow(Doctor $doctor): bool
+    {
+        if (! $doctor->opening_time || ! $doctor->closing_time) {
+            return true;
+        }
+
+        $currentTime = now(config('app.timezone'))->format('H:i:s');
+        $openingTime = $doctor->opening_time->format('H:i:s');
+        $closingTime = $doctor->closing_time->format('H:i:s');
+
+        if ($openingTime === $closingTime) {
+            return true;
+        }
+
+        if ($openingTime < $closingTime) {
+            return $currentTime >= $openingTime && $currentTime < $closingTime;
+        }
+
+        return $currentTime >= $openingTime || $currentTime < $closingTime;
     }
 
 }

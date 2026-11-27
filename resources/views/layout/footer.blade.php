@@ -353,6 +353,8 @@
             website_url: button.dataset.website,
             qualification: button.dataset.qualification,
             experience_years: button.dataset.experience,
+            opening_time: button.dataset.openingTime,
+            closing_time: button.dataset.closingTime,
             address: button.dataset.address,
             bio: button.dataset.bio,
           };

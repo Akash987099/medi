@@ -220,12 +220,15 @@ class DoctorController extends Controller
             'website_url' => ['nullable', 'url', 'max:2048'],
             'qualification' => ['required', 'string', 'max:160'],
             'experience_years' => ['required', 'integer', 'min:0', 'max:80'],
+            'opening_time' => ['nullable', 'date_format:H:i'],
+            'closing_time' => ['nullable', 'date_format:H:i', 'after:opening_time'],
             'address' => ['nullable', 'string', 'max:2000'],
             'bio' => ['nullable', 'string', 'max:5000'],
             'api_access' => ['nullable', 'integer', 'in:0,1,2,3'],
         ], [
             'category_id.exists' => 'Select an active category.',
             'api_access.between' => 'Please select a valid service option.',
+            'closing_time.after' => 'Closing time must be after opening time.',
         ]);
     }
 }
