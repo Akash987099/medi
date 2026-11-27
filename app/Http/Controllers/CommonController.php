@@ -138,7 +138,8 @@ class CommonController extends Controller
             return true;
         }
 
-        $currentTime = now(config('app.timezone'))->format('H:i:s');
+        // Clinic hours in this application are maintained in India time.
+        $currentTime = now('Asia/Kolkata')->format('H:i:s');
         $openingTime = $doctor->opening_time->format('H:i:s');
         $closingTime = $doctor->closing_time->format('H:i:s');
 
