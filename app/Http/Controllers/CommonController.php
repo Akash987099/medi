@@ -8,6 +8,7 @@ use App\Models\Service;
 use App\Models\Doctor;
 use App\Models\Hospital;
 use App\Models\User;
+use App\Models\UserPackage;
 use Illuminate\Support\Str;
 
 class CommonController extends Controller
@@ -36,6 +37,11 @@ class CommonController extends Controller
                     'id' => 4,
                     'description' => 'Use service-details to search for information about a specific healthcare service.',
                 ],
+
+                'packages' => [
+                    'id' => 5,
+                    'description' => 'Use packages to search for information about specific healthcare packages.',
+                ],
             ];
 
         return response()->json($definitions);
@@ -60,6 +66,14 @@ class CommonController extends Controller
         // if(empty($payload)) {
         //     return response()->json(['error' => 'Payload header is missing'], 400);
         // }
+
+        if($payload == 4){
+            $service = Service::where('is_active', 1)
+                ->whereRaw('LOWER(REPLACE(name, " ", "-")) = ?', [strtolower($category_url)])
+                ->first();
+
+            return response()->json($service);
+        }
 
         $category = Category::where('is_active', 1)
             ->whereRaw('LOWER(REPLACE(name, " ", "-")) = ?', [strtolower($category_url)])
@@ -99,6 +113,21 @@ class CommonController extends Controller
                     return $hospital;
                 });
             return response()->json($hospitals);
+        }else if($payload == 5){
+            $get_users = $this->get_users(1);
+            $packages = UserPackage::where('is_active', 1)
+                ->whereIn('user_id', $get_users)
+                ->with(['services' => function ($query) {
+                    $query->where('is_active', 1);
+                }])
+                ->get()
+                ->map(function ($package) {
+                    $package->url = Str::slug($package->name);
+
+                    return $package;
+                });
+
+            return response()->json($packages);
         }
 
         $category->url = Str::slug($category->name);
