@@ -125,7 +125,7 @@
                   @if ($package->services->isNotEmpty())
                     <ul>
                       @foreach ($package->services as $service)
-                        <li>{{ $service->title }}</li>
+                        <li>{{ $service->title ?: $service->service?->name }}</li>
                       @endforeach
                     </ul>
                   @else

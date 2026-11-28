@@ -114,9 +114,9 @@ class CommonController extends Controller
                 });
             return response()->json($hospitals);
         }else if($payload == 5){
-            $get_users = $this->get_users(1);
+            // $get_users = $this->get_users(1);
             $packages = UserPackage::where('is_active', 1)
-                ->whereIn('user_id', $get_users)
+                // ->whereIn('user_id', $get_users)
                 ->with(['services' => function ($query) {
                     $query->where('is_active', 1);
                 }])
