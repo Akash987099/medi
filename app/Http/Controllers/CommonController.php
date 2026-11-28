@@ -195,4 +195,18 @@ class CommonController extends Controller
         return response()->json($services);
     }
 
+    public function hospitals()
+    {
+        $get_users = $this->get_users(1);
+        $hospitals = Hospital::where('is_active', 1)
+            ->whereIn('user_id', $get_users)
+            ->get()
+            ->map(function ($hospital) {
+                $hospital->url = Str::slug($hospital->name);
+                return $hospital;
+            });
+
+        return response()->json($hospitals);
+    }
+
 }
