@@ -183,4 +183,16 @@ class CommonController extends Controller
         return $currentTime >= $openingTime || $currentTime < $closingTime;
     }
 
+    public function services()
+    {
+        $services = Service::where('is_active', 1)
+            ->get()
+            ->map(function ($service) {
+                $service->url = Str::slug($service->name);
+                return $service;
+            });
+
+        return response()->json($services);
+    }
+
 }

@@ -25,6 +25,7 @@ Route::prefix('common')->controller(CommonController::class)->group(function () 
     Route::get('definitions', 'definitions');
     Route::get('categories', 'categories');
     Route::get('doctors', 'doctors');
+    Route::get('services', 'services');
 });
 
 
