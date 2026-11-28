@@ -44,7 +44,10 @@
           </div>
         </div>
         @if ($services->isEmpty())
-          <p class="user-package-empty-note">Add and activate your own services in Services before creating a package.</p>
+          <div class="user-package-empty-state">
+            <p class="user-package-empty-note">Add and activate a service before creating a package.</p>
+            <a class="user-package-add-service" href="{{ route('user.services.index') }}"><i class="fas fa-plus"></i> Add a service</a>
+          </div>
         @else
           <form class="user-package-form" method="POST" action="{{ route('user.packages.store') }}">
             @csrf
@@ -194,6 +197,10 @@
   .user-package-submit:hover { background: var(--green); }
   .user-package-submit:disabled { opacity: .55; cursor: not-allowed; }
   .user-package-empty-note { margin: 0; padding: 0 20px 20px; color: var(--muted); font-size: 12px; }
+  .user-package-empty-state { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px 20px; }
+  .user-package-empty-state .user-package-empty-note { padding: 0; }
+  .user-package-add-service { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; color: #fff; background: var(--green-dark); border-radius: 8px; font-size: 11px; font-weight: 700; text-decoration: none; }
+  .user-package-add-service:hover { color: #fff; background: var(--green); }
   .user-package-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 18px 18px; }
   .user-package-card { min-width: 0; padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 11px; }
   .user-package-card-heading { display: flex; justify-content: space-between; gap: 12px; }
@@ -214,6 +221,6 @@
   .user-package-edit summary { color: var(--green-dark); cursor: pointer; font-size: 11px; font-weight: 700; }
   .user-package-edit .user-package-form { margin-top: 13px; padding: 0; }
   @media (max-width: 800px) { .user-package-list { grid-template-columns: 1fr; } }
-  @media (max-width: 560px) { .user-package-form { grid-template-columns: 1fr; padding-right: 14px; padding-left: 14px; } .user-package-wide { grid-column: auto; } .user-package-card-heading { flex-direction: column; } .user-package-actions { justify-content: flex-start; } }
+  @media (max-width: 560px) { .user-package-form { grid-template-columns: 1fr; padding-right: 14px; padding-left: 14px; } .user-package-wide { grid-column: auto; } .user-package-card-heading, .user-package-empty-state { flex-direction: column; align-items: flex-start; } .user-package-actions { justify-content: flex-start; } }
 </style>
 @endsection

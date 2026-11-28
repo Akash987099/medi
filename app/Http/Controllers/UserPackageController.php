@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Doctor;
+use App\Models\Hospital;
+use App\Models\Service;
 use App\Models\UserPackage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -11,6 +14,32 @@ class UserPackageController extends Controller
     public function index(Request $request)
     {
         $user = $request->user('user');
+
+        // Catalog services are active for an account by default, even before the
+        // account holder customizes one. Packages use user_services as their
+        // selectable records, so make those available here as well.
+        $categoryIds = $this->categoryIdsForUser($user->id, $user->role);
+        $catalogServiceIds = Service::query()
+            ->whereIn('category_id', $categoryIds)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($catalogServiceIds->isNotEmpty()) {
+            $existingServiceIds = $user->services()
+                ->whereIn('service_id', $catalogServiceIds)
+                ->pluck('service_id');
+
+            $missingServiceIds = $catalogServiceIds->diff($existingServiceIds);
+
+            if ($missingServiceIds->isNotEmpty()) {
+                $user->services()->createMany(
+                    $missingServiceIds->map(fn ($serviceId) => [
+                        'service_id' => $serviceId,
+                        'is_active' => true,
+                    ])->all()
+                );
+            }
+        }
 
         return view('users.packages.index', [
             'user' => $user,
@@ -85,5 +114,25 @@ class UserPackageController extends Controller
                         ->where('is_active', true)),
             ],
         ]);
+    }
+
+    private function categoryIdsForUser(int $userId, int $role): array
+    {
+        if ($role === 1) {
+            $hospitalId = Hospital::where('user_id', $userId)->value('id');
+
+            if (! $hospitalId) {
+                return [];
+            }
+
+            return Doctor::where('hospital_id', $hospitalId)
+                ->distinct()
+                ->pluck('category_id')
+                ->all();
+        }
+
+        $categoryId = Doctor::where('user_id', $userId)->value('category_id');
+
+        return $categoryId ? [$categoryId] : [];
     }
 }
